@@ -257,6 +257,15 @@ class ColorPalette {
     colorList.add(color(51, 51, 0));
     colorList.add(color(102, 102, 102));
     colorList.add(color(127, 127, 127));
+    
+    colorList.add(color(255, 63, 63));
+    colorList.add(color(63, 255, 63));
+    colorList.add(color(63, 63, 255));
+    colorList.add(color(63, 255, 255));
+    colorList.add(color(255, 63, 255));
+    colorList.add(color(255, 255, 63));
+    colorList.add(color(165, 42, 42));
+    colorList.add(color(210, 105, 30));
 
     colorList.add(color(255, 127, 127));
     colorList.add(color(127, 255, 127));
@@ -273,6 +282,15 @@ class ColorPalette {
     colorList.add(color(127, 204, 204));
     colorList.add(color(204, 127, 204));
     colorList.add(color(204, 204, 127));
+    colorList.add(color(205, 133, 63));
+    colorList.add(color(222, 184, 135));
+    
+    colorList.add(color(204, 127, 63));
+    colorList.add(color(127, 204, 63));
+    colorList.add(color(127, 63, 204));
+    colorList.add(color(164, 54, 135));
+    colorList.add(color(54, 135, 164));
+    colorList.add(color(135, 164, 54));
     colorList.add(color(205, 133, 63));
     colorList.add(color(222, 184, 135));
   }
