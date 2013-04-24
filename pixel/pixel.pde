@@ -3,6 +3,7 @@ ColorSelector cSelect;
 ColorPalette cPalette;
 PreviewPanel preview;
 ResolutionSelector resSelect;
+Tools tools;
 boolean gridOn;
 float resolution;
 
@@ -14,6 +15,7 @@ void setup() {
   cSelect = new ColorSelector();
   cPalette = new ColorPalette();
   resSelect = new ResolutionSelector();
+  tools = new Tools();
   gridOn = true;
   resolution = 32;
   for (float i = 0; i < 400; i+=400/resolution) {
@@ -28,36 +30,35 @@ void mousePressed() {
   if (mouseX > 0 && mouseX < 400 && mouseX > 0 && mouseY < 400) {
     for (gridBox g : grid) {
       if (within(mouseX, mouseY, g)) {
-        if (mouseButton == LEFT) {
-          g.changeColor(cSelect, 1);
-        }
-        else if (mouseButton == RIGHT) {
-          g.changeColor(cSelect, 2);
-        }
+        tools.drawTool(g);
+        tools.setOrigin(g);
       }
     }
   }
-  if (mouseX > width - 180 && mouseX < width - 20 && mouseY > 15 && mouseY < 255) {
-    color pixel = get(mouseX, mouseY);
-    if (mouseButton == LEFT) {
-      cSelect.setColor(pixel, 1);
-    }
-    else if (mouseButton == RIGHT) {
-      cSelect.setColor(pixel, 2);
-    }
-  }
+  cPalette.onClick();
   resSelect.onClick();
 }
 
 void mouseDragged() {
   if (mouseX > 0 && mouseX < 400 && mouseX > 0 && mouseY < 400) {
     for (gridBox g : grid) {
-      if (within(mouseX, mouseY, g)) {
-        if (mouseButton == LEFT) {
-          g.changeColor(cSelect, 1);
+      if(!tools.shiftHeld){
+        if (within(mouseX, mouseY, g)) {
+          tools.drawTool(g);
         }
-        else if (mouseButton == RIGHT) {
-          g.changeColor(cSelect, 2);
+      }
+      else{
+        if(tools.originSet){
+          if(abs(pmouseX - mouseX) > abs(pmouseY - mouseY)){
+            if(inLineX(mouseX, g)){
+              tools.drawTool(g);
+            }
+          }
+          else{
+            if(inLineY(mouseY, g)){
+              tools.drawTool(g);
+            }
+          }
         }
       }
     }
@@ -82,13 +83,36 @@ void keyPressed() {
     String filename = "image.png";
     File f = new File(dataPath(filename));
     int count = 1;
-    while(f.exists()){
+    while (f.exists ()) {
       filename = "image"+count+".png";
       f = new File(dataPath(filename));
       count++;
     }
     preview.img.save(dataPath(filename));
     println("Saved as: "+filename);
+  }
+  else if (key == 'f' || key == 'F') {
+    for (gridBox g : grid){
+      if(within(mouseX, mouseY, g)){
+        tools.fillTool(g);
+        tools.resetFilled();
+      }
+    }
+  }
+  else if (key == 'r' || key == 'R') {
+    for (gridBox g : grid){
+      if(within(mouseX, mouseY, g)){
+        tools.setOrigin(g);
+      }
+    }
+  }
+  else if (key == ' '){
+    color n1 = cSelect.c1, n2 = cSelect.c2;
+    cSelect.setColor(n1, 2);
+    cSelect.setColor(n2, 1);
+  }
+  else if(keyCode == SHIFT){
+    tools.shiftHeld = true;
   }
 
   if (mouseX > width - 180 && mouseX < width - 20 && mouseY > 15 && mouseY < 255) {
@@ -132,11 +156,42 @@ void keyPressed() {
   }
 }
 
+void keyReleased(){
+  if (key == 'r' || key == 'R') {
+    for (gridBox g : grid) {
+      if(within(mouseX, mouseY, g)){
+        tools.rectTool(g);
+      }
+    }
+  }
+  else if(keyCode == SHIFT){
+    tools.shiftHeld = false;
+  }
+}
+
 boolean within(float x, float y, gridBox g) {
   if (x > g.x - g.w/2 && x < g.x + g.w/2 && y > g.y - g.h/2 && y < g.y + g.h/2) {
     return true;
   }
   else {
+    return false;
+  }
+}
+
+boolean inLineX(float x, gridBox g){
+  if (g.y == tools.originY && x > g.x - g.w/2 && x < g.x + g.w/2) {
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
+boolean inLineY(float y, gridBox g){
+  if (g.x == tools.originX && y > g.y - g.h/2 && y < g.y + g.h/2) {
+    return true;
+  }
+  else{
     return false;
   }
 }
@@ -155,12 +210,15 @@ void draw() {
   preview.onDraw();
   preview.updateImage();
   resSelect.onDraw();
+  tools.onDraw();
 }
 
 class gridBox {
   float x, y; // <<< midPoint
   float w, h; // <<< width & height
   float r, g, b, alpha; // <<< colour
+  float colour;
+  boolean filled;
 
   gridBox(float left, float top, float w, float h) {
     x = left + w/2;
@@ -171,6 +229,8 @@ class gridBox {
     g = 255;
     b = 255;
     alpha = 255;
+    colour = color(r, g, b);
+    filled = false;
   }
 
   void onDraw() {
@@ -195,6 +255,7 @@ class gridBox {
       g = c.g2;
       b = c.b2;
     }
+    colour = color(r, g, b);
   }
 }
 
@@ -257,7 +318,7 @@ class ColorPalette {
     colorList.add(color(51, 51, 0));
     colorList.add(color(102, 102, 102));
     colorList.add(color(127, 127, 127));
-    
+
     colorList.add(color(255, 63, 63));
     colorList.add(color(63, 255, 63));
     colorList.add(color(63, 63, 255));
@@ -284,7 +345,7 @@ class ColorPalette {
     colorList.add(color(204, 204, 127));
     colorList.add(color(205, 133, 63));
     colorList.add(color(222, 184, 135));
-    
+
     colorList.add(color(204, 127, 63));
     colorList.add(color(127, 204, 63));
     colorList.add(color(127, 63, 204));
@@ -299,18 +360,41 @@ class ColorPalette {
     favourites.set(no - 1, c);
   }
 
+  void onClick() {
+    if (mouseX > width - 180 && mouseX < width - 20 && mouseY > 15 && mouseY < 255) {
+      color pixel = get(mouseX, mouseY);
+      if (mouseButton == LEFT) {
+        cSelect.setColor(pixel, 1);
+      }
+      else if (mouseButton == RIGHT) {
+        cSelect.setColor(pixel, 2);
+      }
+    }
+  }
+
   void onDraw() {
     // favourites
+    textAlign(CENTER, CENTER);
     fill(favourites.get(0));
     rect(x + 10, 295, 20, 20);
+    fill(0);
+    text("1", x + 20, 305);
     fill(favourites.get(1));
     rect(x + 40, 295, 20, 20);
+    fill(0);
+    text("2", x + 50, 305);
     fill(favourites.get(2));
     rect(x + 70, 295, 20, 20);
+    fill(0);
+    text("3", x + 80, 305);
     fill(favourites.get(3));
     rect(x + 100, 295, 20, 20);
+    fill(0);
+    text("4", x + 110, 305);
     fill(favourites.get(4));
     rect(x + 130, 295, 20, 20);
+    fill(0);
+    text("5", x + 140, 305);
     // palette
     stroke(0);
     fill(255);
@@ -363,6 +447,7 @@ class ColorPalette {
 class ColorSelector {
   float r1, g1, b1, r2, g2, b2;
   float x1, y1, x2, y2;
+  color c1, c2;
 
   ColorSelector() {
     x1 = width - 160;
@@ -372,6 +457,8 @@ class ColorSelector {
     r2 = 255;
     g2 = 255;
     b2 = 255;
+    c1 = color(r1, g1, b1);
+    c2 = color(r2, g2, b2);
   }
 
   void setColor(color c, int no) {
@@ -379,11 +466,13 @@ class ColorSelector {
       r1 = red(c);
       g1 = green(c);
       b1 = blue(c);
+      c1 = c;
     }
     else {
       r2 = red(c);
       g2 = green(c);
       b2 = blue(c);
+      c2 = c;
     }
   }
 
@@ -439,50 +528,50 @@ class PreviewPanel {
 
 class ResolutionSelector {
   float x, y, w, h;
-  
-  ResolutionSelector(){
+
+  ResolutionSelector() {
     x = 420;
     y = 95;
     w = 80;
     h = 20;
   }
 
-  void onDraw(){
+  void onDraw() {
     textSize(11);
     textAlign(CENTER, CENTER);
     fill(255);
     rect(x, y, w, h);
-    if(resolution == 8){
+    if (resolution == 8) {
       fill(200);
     }
-    else{
+    else {
       fill(255);
     }
     rect(x, y, w/4, h);
     fill(0);
     text("8", x + w/8, y + h/2);
-    if(resolution == 16){
+    if (resolution == 16) {
       fill(200);
     }
-    else{
+    else {
       fill(255);
     }
     rect(x + w/4, y, w/4, h);
     fill(0);
     text("16", x + w/4 + w/8, y + h/2);
-    if(resolution == 32){
+    if (resolution == 32) {
       fill(200);
     }
-    else{
+    else {
       fill(255);
     }
     rect(x + w/2, y, w/4, h);
     fill(0);
     text("32", x + w/2 + w/8, y + h/2);
-    if(resolution == 64){
+    if (resolution == 64) {
       fill(200);
     }
-    else{
+    else {
       fill(255);
     }
     rect(x + w*3/4, y, w/4, h);
@@ -490,26 +579,26 @@ class ResolutionSelector {
     text("64", x + w*3/4 + w/8, y + h/2);
   }
 
-  void onClick(){
+  void onClick() {
     int caseNo = -1;
-    if(isWithin(8) && resolution != 8){
+    if (isWithin(8) && resolution != 8) {
       resolution = 8;
       caseNo = 0;
     }
-    else if(isWithin(16) && resolution != 16){
+    else if (isWithin(16) && resolution != 16) {
       resolution = 16;
       caseNo = 1;
     }
-    else if(isWithin(32) && resolution != 32){
+    else if (isWithin(32) && resolution != 32) {
       resolution = 32;
       caseNo = 2;
     }
-    else if(isWithin(64) && resolution != 64){
+    else if (isWithin(64) && resolution != 64) {
       resolution = 64;
       caseNo = 3;
     }
 
-    if(caseNo != -1){
+    if (caseNo != -1) {
       grid.clear();
       for (float i = 0; i < 400; i+=400/resolution) {
         for (float j = 0; j < 400; j+=400/resolution) {
@@ -520,27 +609,116 @@ class ResolutionSelector {
     }
   }
 
-  boolean isWithin(int res){
-    if(res == 8){
-      if(mouseX > x && mouseX < x + w/4 && mouseY > y && mouseY < y + h){
+  boolean isWithin(int res) {
+    if (res == 8) {
+      if (mouseX > x && mouseX < x + w/4 && mouseY > y && mouseY < y + h) {
         return true;
       }
     }
-    else if(res == 16){
-      if(mouseX > x + w/4 && mouseX < x + w/4 + w/4 && mouseY > y && mouseY < y + h){
+    else if (res == 16) {
+      if (mouseX > x + w/4 && mouseX < x + w/4 + w/4 && mouseY > y && mouseY < y + h) {
         return true;
       }
     }
-    else if(res == 32){
-      if(mouseX > x + w/2 && mouseX < x + w/2 + w/4 && mouseY > y && mouseY < y + h){
+    else if (res == 32) {
+      if (mouseX > x + w/2 && mouseX < x + w/2 + w/4 && mouseY > y && mouseY < y + h) {
         return true;
       }
     }
-    else if(res == 64){
-      if(mouseX > x + w*3/4 && mouseX < x + w*3/4 + w/4 && mouseY > y && mouseY < y + h){
+    else if (res == 64) {
+      if (mouseX > x + w*3/4 && mouseX < x + w*3/4 + w/4 && mouseY > y && mouseY < y + h) {
         return true;
       }
     }
     return false;
   }
 }
+
+class Tools {
+  float x, y, w, h;
+  float originX, originY;
+  boolean originSet;
+  boolean shiftHeld;
+
+  Tools() {
+    x = 420;
+    y = 135;
+    w = 80;
+    h = 60;
+    originSet = false;
+    shiftHeld = false;
+  }
+
+  void fillTool(gridBox g) {
+    g.filled = true;
+    for (gridBox b : grid) {
+      if (!b.filled) {
+        if (within(g.x - g.w, g.y, b) && g.colour == b.colour) {
+          fillTool(b);
+        }
+        else if (within(g.x, g.y - g.h, b) && g.colour == b.colour) {
+          fillTool(b);
+        }
+        else if (within(g.x + g.w, g.y, b) && g.colour == b.colour) {
+          fillTool(b);
+        }
+        else if (within(g.x, g.y + g.h, b) && g.colour == b.colour) {
+          fillTool(b);
+        }
+      }
+    }
+    g.changeColor(cSelect, 1);
+  }
+
+  void drawTool(gridBox g) {
+    if (mouseButton == LEFT) {
+      g.changeColor(cSelect, 1);
+    }
+    else if (mouseButton == RIGHT) {
+      g.changeColor(cSelect, 2);
+    }
+  }
+
+  void resetFilled() {
+    for (gridBox g : grid) {
+      g.filled = false;
+    }
+  }
+
+  void setOrigin(gridBox g) {
+    originX = g.x;
+    originY = g.y;
+    originSet = true;
+  }
+
+  void rectTool(gridBox g) {
+    if (originSet) {
+      for (gridBox b : grid) {
+        if ((b.y == originY || b.y == g.y) && ((b.x >= originX && b.x <= g.x) || (b.x >= g.x && b.x <= originX))) {
+          b.changeColor(cSelect, 1);
+        }
+        else if((b.x == originX || b.x == g.x) && ((b.y >= originY && b.y <= g.y) || (b.y >= g.y && b.y <= originY))){
+          b.changeColor(cSelect, 1);
+        }
+      }
+    }
+    originSet = false;
+  }
+
+  void onDraw() {
+    for (int i = 0; i < 12; i++) {
+      fill(255);
+      rect(x + (20*(i%4)), y + (i/4*20), 20, 20);
+    }
+    textAlign(CENTER, CENTER);
+    fill(0);
+    text("D", x, y, 20, 20);
+    text("F", x + 20, y, 20, 20);
+    text("R", x + 40, y, 20, 20);
+    text("G", x, y + 20, 20, 20);
+    text("C", x + 20, y + 20, 20, 20);
+    text("S", x + 40, y + 20, 20, 20);
+    text("O", x + 60, y + 20, 20, 20);
+  }
+}
+
