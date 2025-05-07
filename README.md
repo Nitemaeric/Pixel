@@ -1,3 +1,3 @@
-# Pixel
+# PIXEL
 
-A repository for experimenting with Processing sketches and creative coding.
+PIXEL is a software project made to help ease and speed up the production of pixel art.
